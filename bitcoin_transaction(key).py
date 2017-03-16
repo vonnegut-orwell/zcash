@@ -16,22 +16,23 @@ def keyToAddr(s):
     return pubKeyToAddr(privateKeyToPublicKey(s))
     
 # Теперь создадим саму транзакцию(one-to-one для простоты). Возьмем левые адреса из coinbase: 
-
+# Ништяки типа scriptSig and scriptPubKey будут разобраны позднее:
 def makeRawTransaction(outputTransactionHash, sourceIndex, scriptSig, outputs):
+    #Определим функцию makeOutput: она будет брать
     def makeOutput(data):
         redemptionSatoshis, outputScript = data
-        return (struct.pack("<Q", redemptionSatoshis).encode('hex') +
-        '%02x' % len(outputScript.decode('hex')) + outputScript)
+        return (struct.pack("<Q", redemptionSatoshis).encode('hex') + #struct.pack должен перевести строку в двоичную систему, а затем encode ее хеширует. Как я понимаю, redemptionSatoshis - это количество Сатоши, которые пойдут на output
+        '%02x' % len(outputScript.decode('hex')) + outputScript) #len вернет мне значение длины строки
     formattedOutputs = ''.join(map(makeOutput, outputs))
     return (
-        "01000000" + # 4 bytes version
-        "01" + # varint for number of inputs
-        outputTransactionHash.decode('hex')[::-1].encode('hex') + # reverse outputTransactionHash
-        struct.pack('<L', sourceIndex).encode('hex') +
-        '%02x' % len(scriptSig.decode('hex')) + scriptSig +
-        "ffffffff" + # sequence
-        "%02x" % len(outputs) + # number of outputs
+        "01000000" + #номер версии, а она пока всегда единичка
+        "01" + #количество входов. У нас один вход(и выход тоже один, к слову)
+        outputTransactionHash.decode('hex')[::-1].encode('hex') + #достаем хеш входа
+        struct.pack('<L', sourceIndex).encode('hex') + #struct.pack должен перевести нашу уже хешированую строку(обрати внимание на encode)
+        '%02x' % len(scriptSig.decode('hex')) + scriptSig + # Ништяки типа scriptSig and scriptPubKey будут разобраны позднее:
+        "ffffffff" + 
+        "%02x" % len(outputs) + # количество выходов  
         formattedOutputs +
-        "00000000" # lockTime
+        "00000000" #время блокировки
         )
 
