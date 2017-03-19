@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     p->setProvingKeyPath((ZC_GetParamsDir() / "sprout-proving.key").string());
     p->loadProvingKey();
 
-    // construct a proof.
+    // создаем доказательство.
 
     for (int i = 0; i < 5; i++) {
         uint256 anchor = ZCIncrementalMerkleTree().root();
