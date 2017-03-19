@@ -1,3 +1,5 @@
+// Так создается notes
+
 #include "Note.hpp"
 #include "prf.h"
 #include "crypto/sha256.h"
