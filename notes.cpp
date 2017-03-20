@@ -12,16 +12,16 @@
 namespace libzcash {
 
 Note::Note() {
-    a_pk = random_uint256();
-    rho = random_uint256();
-    r = random_uint256();
-    value = 0;
+    a_pk = random_uint256();  // создаем paying key 
+    rho = random_uint256(); // входные данные для pseudorandom function, когда будем создавать nullifier
+    r = random_uint256(); // произвольная последовательность, которую мы будем использовать как commitment trapdoor
+    value = 0;  // value нашей note: я хочу создать dummy note, поэтому это dummy note 
 }
 
 uint256 Note::cm() const {
     unsigned char discriminant = 0xb0;
 
-    CSHA256 hasher;
+    CSHA256 hasher; // используем SHA-256 compression function, которая возьмет 512-битный блок и создает 256-битный хещ
     hasher.Write(&discriminant, 1);
     hasher.Write(a_pk.begin(), 32);
 
@@ -38,7 +38,7 @@ uint256 Note::cm() const {
 }
 
 uint256 Note::nullifier(const SpendingKey& a_sk) const {
-    return PRF_nf(a_sk, rho);
+    return PRF_nf(a_sk, rho); // вычисление nullifier происходит при помощи pseudorandom function
 }
 
 NotePlaintext::NotePlaintext(
