@@ -50,7 +50,7 @@ Note::Note() {
 uint256 Note::cm() const {
     unsigned char discriminant = 0xb0;
 
-    CSHA256 hasher; // используем SHA-256 compression function, которая возьмет 512-битный блок и создает 256-битный хеш
+    CSHA256 hasher; 
     hasher.Write(&discriminant, 1);
     hasher.Write(a_pk.begin(), 32);
 
@@ -191,11 +191,16 @@ public:
     JoinSplitCircuit() {}
     ~JoinSplitCircuit() {}
     
-// Указываем путь к нашему proving key и загружаем наш proving key, а затем сохраняем наш файл(и проверяем его существование, конечно).
-//Т.к мы создаем Dummy Note, то путь может и не содержать proving Key - проверка JoinSlpit осуществляться не будет.
+// Разбераемся со всеми ключами, у нас есть: 
+// (1): Payment adress, который создается получателем - он состоит из paying key и transmission key
+// (2): Viewing Key - он состоит из Viewing key and Receiving Key
+// (3): Spending Key - лежит у получателя 
+// (4): Для проверки JoinSplit Description нужны proving и verifying keys - они общедоступны и одинаковые у всех. При помощи этих ключей подтверждается вся информация в JoinSplit
+// (5): Уже в самом JoinSplit создаются два ключа - Ephermal Keys. Они нужны для того, чтобы зашифровать Note PlainTexts, а затем его расшифровать после Zk-SNARK.
 
+// Указываем путь к нашему proving key и загружаем наш proving key(нужен путь к файлу "sprout-proving.key")
     void setProvingKeyPath(std::string path) {
-        pkPath = path;  // Для Dummy Note мы выбираем асболютно левый путь, т.к проверка JoinSplit Staitment осуществляться не будет.
+        pkPath = path;   
     }
 
     void loadProvingKey() {
@@ -213,11 +218,11 @@ public:
         if (pk) {
             saveToFile(path, *pk);
         } else {
-            throw std::runtime_error("cannot save proving key; key doesn't exist"); //Здесь наша проверка и оборвется - proving key просто не существует у Dummy Note.
+            throw std::runtime_error("cannot save proving key; key doesn't exist"); 
         }
     }
     
-    // Проделываем аналогичное для Verifying Key
+    // Проделываем аналогичное для Verifying Key(нужен путь к "sprout-verifying.key")
     
     void loadVerifyingKey(std::string path) {
         LOCK(cs_LoadKeys);
@@ -325,7 +330,7 @@ public:
         }
 
         if (vpub_old > MAX_MONEY) {
-            throw std::invalid_argument("nonsensical vpub_old value");           //Тут проверяется валидность всех значений на входе и выходе.
+            throw std::invalid_argument("nonsensical vpub_old value");          
         }
 
         if (vpub_new > MAX_MONEY) {
