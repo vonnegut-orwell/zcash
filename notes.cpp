@@ -1,4 +1,3 @@
-// Так создается notes
 
 #include "Note.hpp"
 #include "prf.h"
@@ -10,16 +9,25 @@
 #include "zcash/util.h"
 
 namespace libzcash {
-
+    
+// Задачи: создаем Dummy Note . Что я хочу сделать?
+    //(1) Абсолютно рандомно выбираем spending key, из которого выводится paying key
+    //(2) rho и r тоже выбираем рандомно 
+    //(3) Все входные значения в нашей note(v_i^{old}) задаем нулевыми
+    //(4)  Вычисляем nullifier при помощи PseudoRandom function
+    //(5) Создаем JoinpSplit Statement и JoinSplit proof.
+    // Особенности: 
+        //(5a) Путь у нас абсолютно фиктивный, ключа там может и не быть
+        //(5b) В Merkle Tree мы должны задать enforceMerklePath_{i}=0
 Note::Note() {
-    a_pk = random_uint256();  // создаем paying key, т.к мы создаем Dummy Note, то он у нас рандомный 
-    rho = random_uint256(); // снова выбираем его рандомно, ибо Dummy Note.  
+    a_pk = random_uint256();  // создаем paying key, т.к мы создаем Dummy Note, то он у нас рандомный (1)
+    rho = random_uint256(); // снова выбираем его рандомно, ибо Dummy Note.  (2)
     // Зачем нам нужно это rho?
     // Когда мы будем вычислять nullifier, то мы будем использовать pseudo random function для вычисления nullifier.
     // Она "кушает" spending key и это самое rho. И при помощи SHA256Compress она вычисляет nellifier
     r = random_uint256(); // Выбираем его рандомно. произвольная последовательность, которую мы будем использовать как commitment trapdoor. 
-    //Commitment scheme - это отображение из (Commitment trapdoor x Commitment Inputs) -> Commitment Outputs
-    value = 0;  // value нашей note: я хочу создать dummy note, поэтому значение у нас нулевое
+    //Commitment scheme - это отображение из (Commitment trapdoor x Commitment Inputs) -> Commitment Outputs (2)
+    value = 0;  // value нашей note: я хочу создать dummy note, поэтому значение у нас нулевое (3)
 }
 
 uint256 Note::cm() const {
@@ -42,14 +50,15 @@ uint256 Note::cm() const {
 }
 
 uint256 Note::nullifier(const SpendingKey& a_sk) const {
-    return PRF_nf(a_sk, rho); // вычисление nullifier происходит при помощи pseudorandom function Сам код для PRF я добавлять не стал - там какая-то криптографическая жуть.
+    return PRF_nf(a_sk, rho); // вычисление nullifier происходит при помощи pseudorandom function (4)
+    // Сам код для PRF я добавлять не стал - там какая-то криптографическая жуть.
 }
 
- // PRF_nf:=SHA256Compress(252-bit a_sk, 256-bit \rho) - так определяется конкретно эта Pseudo Random в протоколе. 
+ // PRF_nf:=SHA256Compress(252-bit a_sk, 256-bit \rho) - так определяется конкретно эта Pseudo Random в протоколе. (4)
     
     
- // Уже переданные notes хранятся в блокчейне(в зашифрованном виде, конечно) вместе с notecommitment. 
- // Вместе с JoinSptit description связан noteplaintexts, который состоит из значения(value), rho, r(смотри на них выше) и memo. 
+ // Уже переданные notes хранятся в блокчейне(в зашифрованном виде, конечно) вместе с NoteCommitment. 
+ // Вместе с JoinSptit description связан NotePlaintexts, который состоит из значения(value), rho, r(смотри на них выше) и memo. 
  // memo - это что-то типа соглашения между отправителем и получателем.
     
 NotePlaintext::NotePlaintext(
@@ -103,10 +112,8 @@ ZCNoteEncryption::Ciphertext NotePlaintext::encrypt(ZCNoteEncryption& encryptor,
 }
 
 }
-
-// Теперь посмотрим на JoinSplit: транзакция может содержать joinsplit description, состоящее из JoinSplit transfer(скрытое значение). 
-// Грубо говоря, JoinSplit transfer "кушает" сколько-то notes и transparent input(NumInputs) и создает сколько-то новых notes(NumOutputs) и какие-то transparent value.
-
+// В нашей Note два вида информации: открытая(transparent) и скрытая(shielded). Последняя хранится в JoinSplit Description.
+// JoinSplit Description состоит из JoinSplitTransfer - функции, которая "кушает" сколько-то notes и transparent input(NumInputs) и создает сколько-то новых notes(NumOutputs) и какие-то transparent value.
 
 using namespace libsnark;
 
@@ -168,9 +175,10 @@ public:
     ~JoinSplitCircuit() {}
     
 // Указываем путь к нашему proving key и загружаем наш proving key, а затем сохраняем наш файл(и проверяем его существование, конечно).
+//Т.к мы создаем Dummy Note, то путь может и не содержать proving Key - проверка JoinSlpit осуществляться не будет.
 
     void setProvingKeyPath(std::string path) {
-        pkPath = path;  // Для Dummy Note мы выбираем асболютно левый путь, т.к проверка JoinSplit Staitment осуществляться не будет
+        pkPath = path;  // Для Dummy Note мы выбираем асболютно левый путь, т.к проверка JoinSplit Staitment осуществляться не будет.
     }
 
     void loadProvingKey() {
