@@ -12,8 +12,8 @@
 namespace libzcash {
 
 Note::Note() {
-    a_pk = random_uint256();  // создаем paying key, т.к мы создаем Dummy Notes, то он у нас рандомный 
-    rho = random_uint256(); // снова выбираем его рандомно.  
+    a_pk = random_uint256();  // создаем paying key, т.к мы создаем Dummy Note, то он у нас рандомный 
+    rho = random_uint256(); // снова выбираем его рандомно, ибо Dummy Note.  
     // Зачем нам нужно это rho?
     // Когда мы будем вычислять nullifier, то мы будем использовать pseudo random function для вычисления nullifier.
     // Она "кушает" spending key и это самое rho. И при помощи SHA256Compress она вычисляет nellifier
@@ -25,7 +25,7 @@ Note::Note() {
 uint256 Note::cm() const {
     unsigned char discriminant = 0xb0;
 
-    CSHA256 hasher; // используем SHA-256 compression function, которая возьмет 512-битный блок и создает 256-битный хещ
+    CSHA256 hasher; // используем SHA-256 compression function, которая возьмет 512-битный блок и создает 256-битный хеш
     hasher.Write(&discriminant, 1);
     hasher.Write(a_pk.begin(), 32);
 
@@ -42,12 +42,15 @@ uint256 Note::cm() const {
 }
 
 uint256 Note::nullifier(const SpendingKey& a_sk) const {
-    return PRF_nf(a_sk, rho); // вычисление nullifier происходит при помощи pseudorandom function
+    return PRF_nf(a_sk, rho); // вычисление nullifier происходит при помощи pseudorandom function Сам код для PRF я добавлять не стал - там какая-то криптографическая жуть.
 }
 
+ // PRF_nf:=SHA256Compress(252-bit a_sk, 256-bit \rho) - так определяется конкретно эта Pseudo Random в протоколе. 
+    
+    
  // Уже переданные notes хранятся в блокчейне(в зашифрованном виде, конечно) вместе с notecommitment. 
  // Вместе с JoinSptit description связан noteplaintexts, который состоит из значения(value), rho, r(смотри на них выше) и memo. 
- // memo - это что-то типа соглашениЯ между отправителем и получателем.
+ // memo - это что-то типа соглашения между отправителем и получателем.
     
 NotePlaintext::NotePlaintext(
     const Note& note,
@@ -149,7 +152,7 @@ void loadFromFile(std::string path, boost::optional<T>& objIn) {
 
     objIn = std::move(obj);
 }
-// Опишем происходящее ниже в нескольких словах. 
+// Ниже происходит проверка валидности все Input и Output данных. 
 template<size_t NumInputs, size_t NumOutputs>
 class JoinSplitCircuit : public JoinSplit<NumInputs, NumOutputs> {
 public:
@@ -164,10 +167,10 @@ public:
     JoinSplitCircuit() {}
     ~JoinSplitCircuit() {}
     
-// Указываем путь к нашему proving key и загружаем наш proving key, а затем сохраняем наш файл
+// Указываем путь к нашему proving key и загружаем наш proving key, а затем сохраняем наш файл(и проверяем его существование, конечно).
 
     void setProvingKeyPath(std::string path) {
-        pkPath = path;
+        pkPath = path;  // Для Dummy Note мы выбираем асболютно левый путь, т.к проверка JoinSplit Staitment осуществляться не будет
     }
 
     void loadProvingKey() {
@@ -185,7 +188,7 @@ public:
         if (pk) {
             saveToFile(path, *pk);
         } else {
-            throw std::runtime_error("cannot save proving key; key doesn't exist");
+            throw std::runtime_error("cannot save proving key; key doesn't exist"); //Здесь наша проверка и оборвется - proving key просто не существует у Dummy Note.
         }
     }
     
@@ -297,7 +300,7 @@ public:
         }
 
         if (vpub_old > MAX_MONEY) {
-            throw std::invalid_argument("nonsensical vpub_old value");
+            throw std::invalid_argument("nonsensical vpub_old value");           //Тут проверяется валидность всех значений на входе и выходе.
         }
 
         if (vpub_new > MAX_MONEY) {
@@ -312,12 +315,11 @@ public:
             {
                 // Они должны быть ненулевыми
                 if (inputs[i].note.value != 0) {
-                    // The witness root must equal the input root.
-                    if (inputs[i].witness.root() != rt) {
+                
+                if (inputs[i].witness.root() != rt) {
                         throw std::invalid_argument("joinsplit not anchored to the correct root");
                     }
-
-                    // The tree must witness the correct element
+                    
                     if (inputs[i].note.cm() != inputs[i].witness.element()) {
                         throw std::invalid_argument("witness of wrong element for joinsplit input");
                     }
@@ -328,12 +330,14 @@ public:
                     throw std::invalid_argument("input note not authorized to spend with given key");
                 }
 
-                // Проверяем, что баланс не превышает максимальное значение
+                // Проверяем, что значения на входе не выходят за доступные значения
                 if (inputs[i].note.value > MAX_MONEY) {
                     throw std::invalid_argument("nonsensical input note value");
                 }
 
                 lhs_value += inputs[i].note.value;
+                
+                // Проверяем баланс нашей Joinsplit: говоря грубо, сумма transparent(известных) значений и "скрытых" значений на входе должна быть равна сумме известных и "скрытых" значений ны выходею
 
                 if (lhs_value > MAX_MONEY) {
                     throw std::invalid_argument("nonsensical left hand size of joinsplit balance");
@@ -344,16 +348,16 @@ public:
             out_nullifiers[i] = inputs[i].nullifier();
         }
 
-        // Sample randomSeed
+        // 
         out_randomSeed = random_uint256();
 
-        // Compute h_sig
+        // 
         uint256 h_sig = this->h_sig(out_randomSeed, out_nullifiers, pubKeyHash);
 
-        // Sample phi
+        // 
         uint252 phi = random_uint252();
 
-        // Compute notes for outputs
+        // 
         for (size_t i = 0; i < NumOutputs; i++) {
             // Проверяем наши outputs
             {
@@ -383,8 +387,6 @@ public:
             out_commitments[i] = out_notes[i].cm();
         }
 
-        // Encrypt the ciphertexts containing the note
-        // plaintexts to the recipients of the value.
         {
             ZCNoteEncryption encryptor(h_sig);
 
@@ -397,9 +399,6 @@ public:
             out_ephemeralKey = encryptor.get_epk();
         }
 
-        // Authenticate h_sig with each of the input
-        // spending keys, producing macs which protect
-        // against malleability.
         for (size_t i = 0; i < NumInputs; i++) {
             out_macs[i] = PRF_pk(inputs[i].key, i, h_sig);
         }
@@ -423,18 +422,11 @@ public:
             );
         }
 
-        // The constraint system must be satisfied or there is an unimplemented
-        // or incorrect sanity check above. Or the constraint system is broken!
         assert(pb.is_satisfied());
 
-        // TODO: These are copies, which is not strictly necessary.
         std::vector<FieldT> primary_input = pb.primary_input();
         std::vector<FieldT> aux_input = pb.auxiliary_input();
 
-        // Swap A and B if it's beneficial (less arithmetic in G2)
-        // In our circuit, we already know that it's beneficial
-        // to swap, but it takes so little time to perform this
-        // estimate that it doesn't matter if we check every time.
         pb.constraint_system.swap_AB_if_beneficial();
 
         return ZCProof(r1cs_ppzksnark_prover<ppzksnark_ppT>(
@@ -519,3 +511,31 @@ template class JoinSplit<ZC_NUM_JS_INPUTS,
 
 }
 
+// Само вычисление JoinSplit:
+
+using namespace libzcash;
+
+int main(int argc, char **argv)
+{
+    libsnark::start_profiling();
+
+    auto p = ZCJoinSplit::Unopened();
+    p->loadVerifyingKey((ZC_GetParamsDir() / "sprout-verifying.key").string());
+    p->setProvingKeyPath((ZC_GetParamsDir() / "sprout-proving.key").string());
+    p->loadProvingKey();
+
+    // Тут описание доказательства JoinSplit.
+
+    for (int i = 0; i < 5; i++) {
+        uint256 anchor = ZCIncrementalMerkleTree().root();
+        uint256 pubKeyHash;
+
+        JSDescription jsdesc(*p,
+                             pubKeyHash,
+                             anchor,
+                             {JSInput(), JSInput()},
+                             {JSOutput(), JSOutput()},
+                             0,
+                             0);
+    }
+}
