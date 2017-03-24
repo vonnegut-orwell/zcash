@@ -554,7 +554,7 @@ int main(int argc, char **argv)
     p->setProvingKeyPath((ZC_GetParamsDir() / "sprout-proving.key").string());
     p->loadProvingKey();
 
-    // Тут описание доказательства JoinSplit.
+    // Тут описание доказательства JoinSplit. Сначала мы его строим:
 
     for (int i = 0; i < 5; i++) {
         uint256 anchor = ZCIncrementalMerkleTree().root();
@@ -569,3 +569,24 @@ int main(int argc, char **argv)
                              0);
     }
 }
+
+     // Затем реализуем:
+
+        proof = js->prove(
+            inputs,
+            outputs,
+            output_notes,
+            ciphertexts,
+            ephemeralKey,
+            pubKeyHash,
+            randomSeed,
+            macs,
+            nullifiers,
+            commitments,
+            vpub_old,
+            vpub_new,
+            rt
+        );
+    }
+
+    
