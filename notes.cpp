@@ -1,5 +1,16 @@
+// Задачи: что я хочу сделать?
+    //(1) Создаем Dummy Note(все данные выбираются рандомно, кроме значения - оно 0) Строчки: 39-48
+        //(1а) Важно! Создание Note Plaintext(которое содержит memo) и notecommitment Строчки: 78-132
+    //(2) Вычисляем nullifier при помощи PseudoRandom function Строчки: 69-74
+    //(3) Создаем JoinpSplit Statement. Строчки: 133-313 - тут описание всего процесса
+        //(3а) непосредственное создание. Строчки: 546-574
+    //(4) Создаем JoinSplit Proof       Строчки: 313-543
+    //(5) Реализуем JoinSplit Proof     Строчки: 575-592
+    //(6) Осуществляем проверку транзакции  Строчки: 594-до конца
+        //(6a) Всякие мелочи типа входных значений Строчки: 594-708
+        //(6b) Проверка nullifier-а     Строчки: 709-до конца
 
-#include "Note.hpp"
+#include "Note.hpp"  // Подключаем все необходимые "подключаемые файлы(формат hpp), в которых указаны классы функций, имен и т.д. 
 #include "prf.h"
 #include "crypto/sha256.h"
 
@@ -24,21 +35,12 @@
 #include "sync.h"
 #include "amount.h"
 
-
-namespace libzcash {
-    
-// Задачи: что я хочу сделать?
-    //(1) Создаем Dummy Note(все данные выбираются рандомно, кроме значения - оно 0) Строчки: 39-48
-        //(1а) Важно! Создание Note Plaintext(которое содержит memo) и notecommitment Строчки: 78-132
-    //(2) Вычисляем nullifier при помощи PseudoRandom function Строчки: 69-74
-    //(3) Создаем JoinpSplit Statement. Строчки: 133-313 - тут описание всего процесса
-        //(3а) непосредственное создание. Строчки: 546-574
-    //(4) Создаем JoinSplit Proof       Строчки: 313-543
-    //(5) Реализуем JoinSplit Proof     Строчки: 575-592
-    //(6) Осуществляем проверку транзакции  Строчки: 594-до конца
-        //(6a) Всякие мелочи типа входных значений Строчки: 594-708
-        //(6b) Проверка nullifier-а     Строчки: 709-до конца
-Note::Note() {
+// Подключаем пространство имен libzcash 
+namespace libzcash { 
+// В файлу "Note.hpp" был определен класс функций Note, который мы и использем. 
+// Ниже мы используем оператор разрешения области видимости(двойное двоеточие), который имеет такой общий вид:
+// Общий вид: class :: function. В нашем случае есть класс Note, а есть функция Note, у которой нет входных аргументов(они в фигурных скобках).
+Note::Note() { //В фигурных скобках записано тело программы, который описывает создание Dummy Note
     a_pk = random_uint256();  // создаем paying key, т.к мы создаем Dummy Note, то он у нас рандомный (1)
     rho = random_uint256(); // снова выбираем его рандомно, ибо Dummy Note.  (2)
     // Зачем нам нужно это rho?
@@ -49,10 +51,10 @@ Note::Note() {
     value = 0;  // value нашей note: я хочу создать dummy note, поэтому значение у нас нулевое (3)
 }
 
-uint256 Note::cm() const {
-    unsigned char discriminant = 0xb0;
+uint256 Note::cm() const { // uinte 256 указывает, что наша функция возвращает 256-bit unsigned integer
+    unsigned char discriminant = 0xb0; // тут указываем, что это дискриминант формата unsigned char 
 
-    CSHA256 hasher; 
+    CSHA256 hasher; //вызываем класс CSHA256, который объявлен в sha256.h
     hasher.Write(&discriminant, 1);
     hasher.Write(a_pk.begin(), 32);
 
@@ -67,8 +69,8 @@ uint256 Note::cm() const {
 
     return result;
 }
-
-uint256 Note::nullifier(const SpendingKey& a_sk) const {
+    
+uint256 Note::nullifier(const SpendingKey& a_sk) const { // тут она кушает spendingKey и a_sk, но не может их менять - там const рядом)
     return PRF_nf(a_sk, rho); // вычисление nullifier происходит при помощи pseudorandom function (4)
     // Сам код для PRF я добавлять не стал - там какая-то криптографическая жуть.
 }
@@ -83,6 +85,7 @@ uint256 Note::nullifier(const SpendingKey& a_sk) const {
 NotePlaintext::NotePlaintext(
     const Note& note,
     boost::array<unsigned char, ZC_MEMO_SIZE> memo) : memo(memo)
+// Тут мы используем библиотеку boost::array - создаем массив. 
 {
     value = note.value;
     rho = note.rho;
