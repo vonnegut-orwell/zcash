@@ -128,11 +128,14 @@ ZCNoteEncryption::Ciphertext NotePlaintext::encrypt(ZCNoteEncryption& encryptor,
     
 
 //БЛОК 2.2: Проверка JoinSplit
-//Что происходит: Ниже дано строгое описание проверки Joinsplit-а. 
-//Что кушает: какие-то входные и выходные данные, хеш Note CipherText
-// Что выдает: зашефрованные CipherText и epc - он нам нужен для рассшифровки. 
 // В нашей Note два вида информации: открытая(transparent) и скрытая(shielded). Последняя хранится в JoinSplit Description.
 // JoinSplit Description состоит из JoinSplitTransfer - функции, которая "кушает" сколько-то notes и transparent input(NumInputs) и создает сколько-то новых notes(NumOutputs) и какие-то transparent value.
+//Что происходит: Ниже дано строгое описание проверки Joinsplit-а. 
+//Что кушает: входные и выходные shielded значения, хеш Note CipherText
+// Что выдает: зашефрованные CipherText и epc - он нам нужен для рассшифровки. 
+    
+    
+// Тут подробное описание устройства Joinslput, включая ZCProof    
 
 using namespace libsnark;
 
@@ -776,8 +779,8 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state,
     return true;
 }
 
- //Ниже описан процесс расшифровки
-NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
+//Блок 2.3: тут мы расшифровываем уже проверенный Ciphertext при помощи epk ключа, который был получен при проверке JoinSplit
+    NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
                                      const ZCNoteDecryption::Ciphertext& ciphertext,
                                      const uint256& ephemeralKey,
                                      const uint256& h_sig,
