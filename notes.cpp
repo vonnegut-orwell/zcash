@@ -106,7 +106,7 @@ Note NotePlaintext::note(const PaymentAddress& addr) const
     return Note(addr.a_pk, value, rho, r); 
     // Тут описание самой note - это вывод выходных данных функции Note, которая объявлена в самом начале
 }
-//БЛОК 1.5: процесс зашифровки NotePlaintext
+//БЛОК 2.1: процесс зашифровки NotePlaintext
     //Что кушает: кушает Noteplaintext(который потом обозначат за pt) и один из ephemeral key, который тут обозначен за pk_enc
     //Что выдает: NoteCliphertext, который нужен для JoinSlpit Description - это результат работы функции ecrtypt, которая описана ниже
     
@@ -126,30 +126,11 @@ ZCNoteEncryption::Ciphertext NotePlaintext::encrypt(ZCNoteEncryption& encryptor,
     return encryptor.encrypt(pk_enc, pt);
 }   
     
-    
-//Ниже описан процесс расшифровки
-NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
-                                     const ZCNoteDecryption::Ciphertext& ciphertext,
-                                     const uint256& ephemeralKey,
-                                     const uint256& h_sig,
-                                     unsigned char nonce
-                                    )
-{
-    auto plaintext = decryptor.decrypt(ciphertext, ephemeralKey, h_sig, nonce);
 
-    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-    ss << plaintext;
-
-    NotePlaintext ret;
-    ss >> ret;
-
-    assert(ss.size() == 0);
-
-    return ret;
-}
-
-
-//БЛОК 2: Проверка JoinSplit
+//БЛОК 2.2: Проверка JoinSplit
+//Что происходит: Ниже дано строгое описание проверки Joinsplit-а. 
+//Что кушает: какие-то входные и выходные данные, хеш Note CipherText
+// Что выдает: зашефрованные CipherText и epc - он нам нужен для рассшифровки. 
 // В нашей Note два вида информации: открытая(transparent) и скрытая(shielded). Последняя хранится в JoinSplit Description.
 // JoinSplit Description состоит из JoinSplitTransfer - функции, которая "кушает" сколько-то notes и transparent input(NumInputs) и создает сколько-то новых notes(NumOutputs) и какие-то transparent value.
 
@@ -447,7 +428,7 @@ public:
                 out_ciphertexts[i] = pt.encrypt(encryptor, outputs[i].addr.pk_enc);
             }
 
-            out_ephemeralKey = encryptor.get_epk(); //Здесь мы получаем epk, который будет нужен для  расшифровки 
+            out_ephemeralKey = encryptor.get_epk(); //Здесь мы получаем epk, который будет нужен для  расшифровки.
         }
 
         for (size_t i = 0; i < NumInputs; i++) {
@@ -795,4 +776,24 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state,
     return true;
 }
 
+ //Ниже описан процесс расшифровки
+NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
+                                     const ZCNoteDecryption::Ciphertext& ciphertext,
+                                     const uint256& ephemeralKey,
+                                     const uint256& h_sig,
+                                     unsigned char nonce
+                                    )
+{
+    auto plaintext = decryptor.decrypt(ciphertext, ephemeralKey, h_sig, nonce);
+
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss << plaintext;
+
+    NotePlaintext ret;
+    ss >> ret;
+
+    assert(ss.size() == 0);
+
+    return ret;
+}
     
