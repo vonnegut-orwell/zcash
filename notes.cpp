@@ -10,9 +10,9 @@
         //(6a) Всякие мелочи типа входных значений Строчки: 594-708
         //(6b) Проверка nullifier-а     Строчки: 709-до конца
 
-#include "Note.hpp"  // Подключаем все необходимые "подключаемые файлы(формат hpp), в которых указаны классы функций, имен и т.д. 
-#include "prf.h"
-#include "crypto/sha256.h"
+#include "Note.hpp"  // Подключаем все необходимые "подключаемые файлы(формат hpp), в которых указаны классы функций, имен и т.д. Тут у нас классы и функции, которые нужны для создания N
+#include "prf.h"    // Подключаем все, что нужно для pseudo random functions
+#include "crypto/sha256.h"  //
 
 #include "version.h"
 #include "streams.h"
@@ -35,11 +35,15 @@
 #include "sync.h"
 #include "amount.h"
 
+//БЛОК 1: создание Note. В нем есть функция Note, которая и принадлежит классу Note.
 // Подключаем пространство имен libzcash 
 namespace libzcash { 
 // В файлу "Note.hpp" был определен класс функций Note, который мы и использем. 
 // Ниже мы используем оператор разрешения области видимости(двойное двоеточие), который имеет такой общий вид:
 // Общий вид: class :: function. В нашем случае есть класс Note, а есть функция Note, у которой нет входных аргументов(они в фигурных скобках).
+// БЛОК 1.1: создание самое Dummy Note   
+        //Что кушает эта функция: ничего она не кушает. Мы создаем Dummy Note - все вбивается рандомно. 
+        //Что этот блок возвращает: у тебя будут paying key, rho и r.
 Note::Note() { //В фигурных скобках записано тело программы, который описывает создание Dummy Note
     a_pk = random_uint256();  // создаем paying key, т.к мы создаем Dummy Note, то он у нас рандомный (1)
     rho = random_uint256(); // снова выбираем его рандомно, ибо Dummy Note.  (2)
@@ -50,7 +54,9 @@ Note::Note() { //В фигурных скобках записано тело п
     //Commitment scheme - это отображение из (Commitment trapdoor x Commitment Inputs) -> Commitment Outputs (2)
     value = 0;  // value нашей note: я хочу создать dummy note, поэтому значение у нас нулевое (3)
 }
-
+ // БЛОК 1.2: мы хешируем 
+ // Что он кушает: ничего, кроме вышеназванного paying key.
+ // Что он возвращает: захешированный paying key
 uint256 Note::cm() const { // uinte 256 указывает, что наша функция возвращает 256-bit unsigned integer
     unsigned char discriminant = 0xb0; // тут указываем, что это дискриминант формата unsigned char 
 
@@ -61,22 +67,25 @@ uint256 Note::cm() const { // uinte 256 указывает, что наша фу
     auto value_vec = convertIntToVectorLE(value);
 
     hasher.Write(&value_vec[0], value_vec.size());
-    hasher.Write(rho.begin(), 32);
+    hasher.Write(rho.begin(), 32); //Функция Write описана в "sha256.h"
     hasher.Write(r.begin(), 32);
 
-    uint256 result;
-    hasher.Finalize(result.begin());
+    uint256 result; // вводим новую переменную results
+    hasher.Finalize(result.begin()); //Функция Finalize описана в "sha256.h"
 
-    return result;
+    return result; //Возвращаем нашу переменную result 
+    // Конкретно эта часть:
 }
-    
+ //БЛОК 1.3: создание nullifier
+    //Что кушает: a_sk - spending key
+    //Что возвращает: результат работы псевдо-рандомной функции для nullifier
 uint256 Note::nullifier(const SpendingKey& a_sk) const { // тут она кушает spendingKey и a_sk, но не может их менять - там const рядом)
     return PRF_nf(a_sk, rho); // вычисление nullifier происходит при помощи pseudorandom function (4)
     // Сам код для PRF я добавлять не стал - там какая-то криптографическая жуть.
 }
 
- // PRF_nf:=SHA256Compress(252-bit a_sk, 256-bit \rho) - так определяется конкретно эта Pseudo Random в протоколе. (4)
-    
+ // PRF_nf:=SHA256Compress(252-bit a_sk, 256-bit \rho) - так определяется конкретно эта Pseudo Random function в протоколе. (4)
+ // Возвращаем результат работы нашей псевдо-рандомной функции   
     
  // Уже переданные notes хранятся в блокчейне(в зашифрованном виде, конечно) вместе с NoteCommitment. 
  // Вместе с JoinSptit description связан NotePlaintexts, который состоит из значения(value), rho, r(смотри на них выше) и memo. 
@@ -88,15 +97,16 @@ NotePlaintext::NotePlaintext(
 // Тут мы используем библиотеку boost::array - создаем массив. 
 {
     value = note.value;
-    rho = note.rho;
-    r = note.r;
+    rho = note.rho;   // Достаем значение из note: стандартный вид(файл, из которого достаем нужное свойство)
+    r = note.r;       // Например: note - это файл, а r - это свойсвто
 }
 
 Note NotePlaintext::note(const PaymentAddress& addr) const
 {
-    return Note(addr.a_pk, value, rho, r);
+    return Note(addr.a_pk, value, rho, r); 
+    // Тут описание самой note - это вывод выходных данных функции Note, которая объявлена в самом начале
 }
-
+//Ниже описан процесс расшифровки
 NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
                                      const ZCNoteDecryption::Ciphertext& ciphertext,
                                      const uint256& ephemeralKey,
@@ -116,7 +126,7 @@ NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
 
     return ret;
 }
-
+// А здесь ниже описан процесс зашифровки!
 ZCNoteEncryption::Ciphertext NotePlaintext::encrypt(ZCNoteEncryption& encryptor,
                                                     const uint256& pk_enc
                                                    ) const
@@ -134,6 +144,8 @@ ZCNoteEncryption::Ciphertext NotePlaintext::encrypt(ZCNoteEncryption& encryptor,
 }
 
 }
+
+//БЛОК 2: Проверка JoinSplit
 // В нашей Note два вида информации: открытая(transparent) и скрытая(shielded). Последняя хранится в JoinSplit Description.
 // JoinSplit Description состоит из JoinSplitTransfer - функции, которая "кушает" сколько-то notes и transparent input(NumInputs) и создает сколько-то новых notes(NumOutputs) и какие-то transparent value.
 
@@ -147,7 +159,7 @@ CCriticalSection cs_ParamsIO;
 CCriticalSection cs_LoadKeys;
 
 template<typename T>
-void saveToFile(std::string path, T& obj) {
+void saveToFile(std::string path, T& obj) {     //void - это функция, которая ничего не возвращает 
     LOCK(cs_ParamsIO);
 
     std::stringstream ss;
@@ -313,7 +325,7 @@ public:
             return false;
         }
     }
-
+    // Описание ZCProof. В скобках описаны все-все-все входные параметры, которая она кушает.
     ZCProof prove(
         const boost::array<JSInput, NumInputs>& inputs,
         const boost::array<JSOutput, NumOutputs>& outputs,
@@ -546,7 +558,7 @@ template class JoinSplit<ZC_NUM_JS_INPUTS,
 
 }
 
-// Само вычисление JoinSplit:
+//БЛОК 3: создание и вычисление JoinSplit
 
 using namespace libzcash;
 
