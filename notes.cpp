@@ -90,7 +90,7 @@ uint256 Note::nullifier(const SpendingKey& a_sk) const { // тут она куш
  // Уже переданные notes хранятся в блокчейне(в зашифрованном виде, конечно) вместе с NoteCommitment. 
  // Вместе с JoinSptit description связан NotePlaintexts, который состоит из значения(value), rho, r(смотри на них выше) и memo. 
  // memo - это что-то типа соглашения между отправителем и получателем.
-    
+ // Блок 1.4: создание NotePlainText   
 NotePlaintext::NotePlaintext(
     const Note& note,
     boost::array<unsigned char, ZC_MEMO_SIZE> memo) : memo(memo)
@@ -106,6 +106,27 @@ Note NotePlaintext::note(const PaymentAddress& addr) const
     return Note(addr.a_pk, value, rho, r); 
     // Тут описание самой note - это вывод выходных данных функции Note, которая объявлена в самом начале
 }
+//БЛОК 1.5: процесс зашифровки NotePlaintext
+    //Что кушает: кушает Noteplaintext(который потом обозначат за pt) и один из ephemeral key, который тут обозначен за pk_enc
+    //Что выдает: NoteCliphertext, который нужен для JoinSlpit Description - это результат работы функции ecrtypt, которая описана ниже
+    
+ZCNoteEncryption::Ciphertext NotePlaintext::encrypt(ZCNoteEncryption& encryptor,
+                                                    const uint256& pk_enc
+                                                   ) const
+{
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss << (*this);
+
+    ZCNoteEncryption::Plaintext pt; //Обозначаем plaintext за pt
+
+    assert(pt.size() == ss.size());
+
+    memcpy(&pt[0], &ss[0], pt.size());
+
+    return encryptor.encrypt(pk_enc, pt);
+}   
+    
+    
 //Ниже описан процесс расшифровки
 NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
                                      const ZCNoteDecryption::Ciphertext& ciphertext,
@@ -126,24 +147,7 @@ NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
 
     return ret;
 }
-// А здесь ниже описан процесс зашифровки!
-ZCNoteEncryption::Ciphertext NotePlaintext::encrypt(ZCNoteEncryption& encryptor,
-                                                    const uint256& pk_enc
-                                                   ) const
-{
-    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
-    ss << (*this);
 
-    ZCNoteEncryption::Plaintext pt;
-
-    assert(pt.size() == ss.size());
-
-    memcpy(&pt[0], &ss[0], pt.size());
-
-    return encryptor.encrypt(pk_enc, pt);
-}
-
-}
 
 //БЛОК 2: Проверка JoinSplit
 // В нашей Note два вида информации: открытая(transparent) и скрытая(shielded). Последняя хранится в JoinSplit Description.
@@ -443,7 +447,7 @@ public:
                 out_ciphertexts[i] = pt.encrypt(encryptor, outputs[i].addr.pk_enc);
             }
 
-            out_ephemeralKey = encryptor.get_epk();
+            out_ephemeralKey = encryptor.get_epk(); //Здесь мы получаем epk, который будет нужен для  расшифровки 
         }
 
         for (size_t i = 0; i < NumInputs; i++) {
