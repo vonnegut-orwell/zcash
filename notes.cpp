@@ -11,7 +11,9 @@
         //(6b) Проверка nullifier-а     Строчки: 709-до конца
 
 // Вся работа поделилась на два блока:
-        // БЛОК 1: создание самой Note и Note plainext вместе с memo
+        // БЛОК 1: создание самой Note и Note plainext вместе с memo Notes.cpp в zcash/src/zcash
+
+        //Где найти: Notes.cpp
 
                 //1.1 - описание фрагмента, который просто задает Note
                 //1.2 - хеширование ключей и прочего
@@ -19,6 +21,7 @@
                 //1.5 - создание NotePlaintText
 
         // БЛОК 2: создание Joinslpit Statement, влючая сшифровку и расшифровку Note Plaintext и Ciphertext
+        // Где найти:Joinsplit.cpp и Create_Joinsplit.cpp
 
                 //2.1 - процесс зашифровки NotePlaintext
                 //2.2 - проверка JoinSplit (описание всех тонкостей на языке c++), включая вычисление ZCProof
