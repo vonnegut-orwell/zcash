@@ -21,7 +21,9 @@
         // БЛОК 2: создание Joinslpit Statement, влючая сшифровку и расшифровку Note Plaintext и Ciphertext
 
                 //2.1 - процесс зашифровки NotePlaintext
-                //2.2 - проверка JoinSplit
+                //2.2 - проверка JoinSplit (описание всех тонкостей на языке c++), включая вычисление ZCProof
+                //2.3 - непосредственное создание и вычисление JoinSplit
+                //2.4 - расшифровка Ciphertext
 
 #include "Note.hpp"  // Подключаем все необходимые "подключаемые файлы(формат hpp), в которых указаны классы функций, имен и т.д. Тут у нас классы и функции, которые нужны для создания N
 #include "prf.h"    // Подключаем все, что нужно для pseudo random functions
@@ -559,7 +561,7 @@ template class JoinSplit<ZC_NUM_JS_INPUTS,
 
 }
 
-//БЛОК 3: создание и вычисление JoinSplit
+//БЛОК 2.3: создание и вычисление JoinSplit
 
 using namespace libzcash;
 
@@ -792,7 +794,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state,
     return true;
 }
 
-//Блок 2.3: тут мы расшифровываем уже проверенный Ciphertext при помощи epk ключа, который был получен при проверке JoinSplit
+//БЛОК 2.4: тут мы расшифровываем уже проверенный Ciphertext при помощи epk ключа, который был получен при проверке JoinSplit
     NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
                                      const ZCNoteDecryption::Ciphertext& ciphertext,
                                      const uint256& ephemeralKey,
