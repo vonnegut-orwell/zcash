@@ -15,19 +15,20 @@
 
         //Где найти: Notes.cpp
 
-                //1.1 - описание фрагмента, который просто задает Note
-                //1.2 - хеширование ключей и прочего
-                //1.3 - создание nullifier
-                //1.5 - создание NotePlaintText
+                //1.1 - описание фрагмента, который просто задает Note - стр 56
+                //1.2 - хеширование ключей и прочего - стр 75
+                //1.3 - создание nullifier - стр 97
+                //1.5 - создание NotePlaintText - стр 111
 
         // БЛОК 2: создание Joinslpit Statement, влючая сшифровку и расшифровку Note Plaintext и Ciphertext
         // Где найти:Joinsplit.cpp и Create_Joinsplit.cpp
 
-                //2.1 - процесс зашифровки NotePlaintext
-                //2.2 - проверка JoinSplit (описание всех тонкостей на языке c++), включая вычисление ZCProof
-                //2.3 - непосредственное создание и вычисление JoinSplit
-                //2.4 - расшифровка Ciphertext
-
+                //2.1 - процесс зашифровки NotePlaintext - стр 129
+                //2.2 - проверка JoinSplit (описание всех тонкостей на языке c++), включая вычисление ZCProof - стр 150
+                //2.3 - непосредственное создание и вычисление JoinSplit - 569
+                //2.4 - расшифровка Ciphertext - стр 802
+    // Часть блоков(1.1-2.1, 2.4) работают по-отдельности(самые простые части - создание Dummy note), блоки 2.2 и 2.3 я еще не до конца доработал - сказать ничего не могу
+    // Еще нужно сделать: заставить все блоки работать вместе, разобраться со всеми .hpp файлами.
 #include "Note.hpp"  // Подключаем все необходимые "подключаемые файлы(формат hpp), в которых указаны классы функций, имен и т.д. Тут у нас классы и функции, которые нужны для создания N
 #include "prf.h"    // Подключаем все, что нужно для pseudo random functions
 #include "crypto/sha256.h"  //
@@ -72,9 +73,9 @@ Note::Note() { //В фигурных скобках записано тело п
     //Commitment scheme - это отображение из (Commitment trapdoor x Commitment Inputs) -> Commitment Outputs (2)
     value = 0;  // value нашей note: я хочу создать dummy note, поэтому значение у нас нулевое (3)
 }
- // БЛОК 1.2: мы хешируем 
+ // БЛОК 1.2: вычисляется note commitment
  // Что он кушает: ничего, кроме вышеназванного paying key.
- // Что он возвращает: захешированный paying key
+ // Что он возвращает: note commitment
 uint256 Note::cm() const { // uinte 256 указывает, что наша функция возвращает 256-bit unsigned integer
     unsigned char discriminant = 0xb0; // тут указываем, что это дискриминант формата unsigned char 
 
@@ -108,7 +109,9 @@ uint256 Note::nullifier(const SpendingKey& a_sk) const { // тут она куш
  // Уже переданные notes хранятся в блокчейне(в зашифрованном виде, конечно) вместе с NoteCommitment. 
  // Вместе с JoinSptit description связан NotePlaintexts, который состоит из значения(value), rho, r(смотри на них выше) и memo. 
  // memo - это что-то типа соглашения между отправителем и получателем.
- // Блок 1.4: создание NotePlainText   
+ // БЛОК 1.4: создание NotePlainText   
+ // Что он кушает: он просто вытаскивает значения из Notes
+ //Что он выдает: созданный NotePlaintext
 NotePlaintext::NotePlaintext(
     const Note& note,
     boost::array<unsigned char, ZC_MEMO_SIZE> memo) : memo(memo)
@@ -798,6 +801,8 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state,
 }
 
 //БЛОК 2.4: тут мы расшифровываем уже проверенный Ciphertext при помощи epk ключа, который был получен при проверке JoinSplit
+// Что он кушает: epc ключ и Ciphertext
+// Что выдает:расшифрованный plaintext
     NotePlaintext NotePlaintext::decrypt(const ZCNoteDecryption& decryptor,
                                      const ZCNoteDecryption::Ciphertext& ciphertext,
                                      const uint256& ephemeralKey,
